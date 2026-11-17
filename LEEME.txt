@@ -1,3 +1,13 @@
+ACTUALIZACION DEL TMO 17/11/2026
+TMO = (suma Total de ACW + suma Manejo total) / atendidas, en segundos.
+Atendidas: casos distintos con participación y ambos tiempos válidos.
+Los faltantes no se convierten en cero: se excluyen y se informa cuántos.
+No se limita TMO al último asesor; esa regla se conserva para CxH.
+Los casos sin participantes no cuentan como atendidas para TMO.
+Los compartidos usan tiempos del caso, no tiempos individuales.
+Esta fórmula reemplaza las referencias a L - AT para TMO de las notas anteriores.
+L - AT sigue disponible solo como detalle del caso.
+
 TELEP · Análisis local de atención
 
 1. Abrí index.html con Chrome o Edge (doble clic).

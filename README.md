@@ -14,7 +14,7 @@ El CSV se guarda como una copia en IndexedDB del navegador para recuperarlo al r
 
 ## Vistas y reglas
 
-- **TMO:** promedio de Duración menos Total de cola, convertido a segundos. Por asesor, se incluyen solo los casos donde figura último en la lista. No equivale a tiempo activo individual.
+- **TMO:** (Total de ACW + Manejo total) / atendidas con ambos tiempos informados, convertido a segundos. Atendidas son casos distintos donde participó el asesor. No se aplica el filtro del último asesor a TMO. En compartidos, los tiempos son del caso completo.
 - **FCR:** porcentaje de casos sin otro contacto del mismo cliente en siete días, entre los evaluables. Se distingue el seguimiento incompleto.
 - **CxH:** cierres por fecha y hora asignados al último asesor. Se excluyen las conclusiones que terminan en CLIENTE NO CONTESTA.
 - **Casos:** detalle del caso, historial y todas las columnas originales.

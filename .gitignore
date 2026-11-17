@@ -1,0 +1,27 @@
+# Los datos de atención y sus copias deben permanecer locales.
+*.csv
+*.tsv
+*.xls
+*.xlsx
+*.xlsm
+*.pdf
+*.rtf
+*.doc
+*.docx
+Guia de calculo TP.html
+.documentacion/
+
+# Pruebas locales con referencias a conversaciones del archivo real.
+/validar*.cjs
+
+# Credenciales y archivos temporales.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+node_modules/
+*.log
+__pycache__/
+.DS_Store
+Thumbs.db

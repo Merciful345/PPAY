@@ -1,0 +1,142 @@
+TELEP · Análisis local de atención
+
+1. Abrí index.html con Chrome o Edge (doble clic).
+2. Pulsá «Cargar CSV» y elegí interacciones-exportadas.csv.
+3. Esperá a que termine la lectura. Buscá el asesor por nombre o código.
+4. Usá los filtros y seleccioná una fila para ver el historial completo.
+
+NAVEGACIÓN POR INDICADOR
+TMO: #/tmo — promedio L - AT, casos incluidos y los casos más largos.
+FCR: #/fcr — resultados del seguimiento y acceso a cada grupo de casos.
+CxH: #/cxh — cierres por hora, con detalle del asesor seleccionado.
+Casos: #/casos — tabla completa y acceso al historial del cliente.
+«Ver este caso» abre #/casos/ID con ficha completa, tiempos, participantes,
+criterios de los indicadores e historial. Al final están todas las columnas
+originales, incluidos vacíos, con buscador de encabezado/valor. Si hay varias
+filas del mismo ID, muestra cada registro fuente por separado.
+Actividad: #/actividad — restantes indicadores, canales y actividad diaria.
+Las rutas funcionan al abrir index.html directamente, sin servidor.
+Cambiar de vista conserva el CSV cargado, asesor y filtros.
+Actividad incluye evolución de inicios y cierres por fecha, colas y canales
+por volumen, distribución de L - AT y proporción de casos compartidos.
+Las barras de colas, canales, duración y participación abren sus casos.
+En Casos, «Quitar filtro del gráfico» elimina ese recorte.
+Los cierres diarios usan fecha de finalización y último asesor, excluyendo
+CLIENTE NO CONTESTA. La diferencia entre inicios y cierres de la selección
+no mide pendientes ni productividad. Los días sin eventos se muestran en cero.
+La interfaz usa violeta y magenta del logo; los estados conservan etiquetas.
+EMPRESA DEL ASESOR (INDICIO)
+Se consideran solo filas fuente con un asesor y una división. Si todas las
+filas elegibles coinciden, aparece «EMPRESA — según CSV». Si hay más de una
+división entre esas filas, «Datos contradictorios». Sin evidencia, «Sin confirmar».
+No se cruza por posición, no se asigna TELEP por participar en un caso mixto
+y no equivale a un padrón confirmado. La evidencia usa todo el archivo.
+TELEP se muestra como TP en estas etiquetas; el valor fuente no se altera.
+La etiqueta del asesor abre los casos que sustentan el indicio. El filtro
+de empresa recorta únicamente el listado de asesores, tal como indica su
+etiqueta; elegir un asesor abre sus indicadores con las reglas existentes.
+La matriz de Actividad cruza asesores con fechas; podés elegir cierres,
+participaciones, promedio L - AT o FCR. Tiene filas paginadas, totales y
+formato condicional. Cada celda abre sus casos. Los totales de promedios
+y FCR se ponderan por cantidad de casos evaluados, no promedian porcentajes.
+En participaciones y FCR, los compartidos aparecen bajo cada asesor; los
+totales de la matriz cuentan participaciones. Cierres usa fecha de cierre;
+los demás indicadores usan fecha de inicio. Las columnas agrupadas,
+el anillo de canales y el histograma son gráficos locales, sin Power BI externo.
+
+El CSV se lee en memoria y NO se modifica. No hay conexiones externas,
+subidas. Se guarda una copia del CSV en IndexedDB, dentro de este navegador.
+Al cerrar o recargar, se recupera y analiza de nuevo automáticamente.
+La copia no modifica el archivo original. Usá el mismo navegador, perfil
+y dirección para recuperarla (file y localhost tienen espacios separados).
+Si borrás los datos del navegador o usás modo privado, puede perderse.
+El botón Borrar copia guardada elimina solo esa copia, no el CSV original.
+Conservá index.html, style.css, app.js, advisor.js, engine.js, worker.js
+storage.js, routes.js, activity.js, bi.js, case-detail.js, companies.js y TP logo.svg juntos en esta carpeta.
+
+FICHA EXACTA DE CADA ASESOR
+Buscá el nombre o código arriba y pulsá «Abrir ficha» en el directorio.
+La selección se fija por ID, incluso si dos participantes tienen igual nombre.
+La ficha muestra casos únicos, individuales y compartidos, conversación de voz,
+manejo, promedios con datos informados, clientes AR., actividad diaria, canales,
+colas, motivos de cierre y compañeros de casos compartidos.
+Los indicadores «Ver casos» abren el subconjunto en la tabla inferior.
+«Recibidos como nuevo asesor» cuenta recontactos dentro de 7 días donde ese
+ID concreto no estaba en el caso previo. «Recontactos <= 7 días» incluye
+todos los casos con su participación, aunque ya hubiera atendido antes.
+Los filtros superiores afectan la ficha; la búsqueda de caso y participación
+solo afectan la tabla inferior y los indicadores generales que la acompañan.
+Los tiempos faltantes se excluyen del promedio y se informa cuántos faltan.
+«Ver todos los asesores» quita la selección individual.
+
+CIERRES POR HORA DEL ASESOR
+Regla de asignación: el cierre cuenta únicamente para el último participante
+de Usuarios - Con interacciones, respetando el orden original separado por ;.
+Los participantes anteriores conservan el caso atendido y FCR, pero no
+suman ese cierre en sus CxH ni su duración en el promedio personal.
+El promedio personal L - AT usa solo los casos donde el asesor aparece último.
+Se informa cuántos casos se promedian, cuántos no tienen datos válidos y
+cuántos quedan fuera por tener otro último asesor. Esta regla no reparte
+el tiempo individual de casos compartidos: usa el tiempo completo del caso.
+La exclusión CLIENTE NO CONTESTA sigue vigente para CxH; no se agrega como
+una exclusión nueva al promedio de duración.
+En la ficha se muestran 24 franjas (00 a 23), calculadas por Fecha de
+finalización, excluyendo CLIENTE NO CONTESTA. Se separan único asesor y
+compartidos. Podés abrir el detalle exacto por fecha y hora de cierre.
+Cada barra o botón «Ver casos» filtra la tabla inferior; «Quitar filtro de
+hora» vuelve a todos sus casos. Las cifras respetan los filtros superiores
+(las fechas superiores siguen siendo fechas de inicio del caso).
+Los totales por hora del día acumulan todos los días del período.
+No equivalen a casos por hora trabajada: no hay horas de conexión en el CSV.
+
+MÉTRICAS PRINCIPALES
+TMO: promedio de (Duración - Total de cola), convertido de milisegundos
+a segundos. No usa FN. Se excluyen casos sin alguno de los dos valores,
+valores negativos o cola mayor que duración. Cero informado es válido.
+Es duración del caso sin cola, no tiempo activo verificado del asesor.
+En compartidos se mantiene como métrica del caso, sin reparto individual.
+FCR: porcentaje sin recontacto posterior en 7 días sobre casos evaluables.
+Se busca el siguiente inicio del mismo AR. a partir del cierre, inclusive,
+hasta 168 horas. Si hay contacto en esa ventana, no cumple FCR. Para afirmar
+que no hubo contacto, exige 168 horas observables hasta el último inicio
+del archivo. Los casos cerca del final se marcan Seguimiento incompleto.
+El horizonte es una estimación de cobertura del export, no prueba de que
+el archivo incluya todos los contactos posibles. Remoto inválido o fechas
+faltantes impiden evaluar. Usa todo el CSV antes de filtrar.
+El recontacto recibido de un caso es distinto del FCR de ese mismo caso:
+el primero mira el antecedente; FCR mira contactos posteriores.
+TMO y FCR incluyen los casos CLIENTE NO CONTESTA; su exclusión afecta CxH
+y los indicadores de cierres, conforme a la regla solicitada.
+CxH se presenta por fecha y hora. En el resumen/directorio muestra el
+máximo de cierres en una hora real. No es un promedio por hora trabajada.
+Los filtros de caso, participación, hora y FCR acotan la tabla inferior;
+los indicadores principales y las fichas conservan los filtros superiores.
+
+Alternativa recomendada para procesar en segundo plano:
+Ejecutá ABRIR.bat y usá http://localhost:8765. No cierres la consola
+mientras uses el tablero. Para detenerlo, presioná Ctrl+C en esa consola.
+Este servidor sirve la carpeta únicamente a tu propio equipo (127.0.0.1).
+
+Filtros de fecha: fecha de inicio, ambos extremos incluidos.
+Los filtros no cambian los antecedentes del historial completo.
+Minutos en llamada: conversación total / 60.000, solo canal voz.
+La tarjeta principal separa minutos de casos con único asesor de los
+minutos totales de casos compartidos; no reparte estos últimos por asesor.
+La asignación de cierre al último asesor es la regla operativa definida
+para este tablero; los demás participantes no suman ese cierre.
+Para los indicadores de finalizados (incluido el gráfico por hora), se exige
+fecha de finalización y se excluye el caso si el último tramo de «Última
+conclusión», separado por | o ;, es CLIENTE NO CONTESTA. La comparación
+ignora mayúsculas y espacios sobrantes. Si la tabulación final es otra,
+el caso computa. Esta regla se aplica también a las fichas y al directorio.
+El caso excluido sigue en el detalle y su fecha de finalización original
+se conserva para calcular el historial y la ventana de recontactos.
+Los valores faltantes se muestran como «Sin informar»; no se convierten en cero.
+Filas repetidas del mismo ID se consolidan: unión de participantes y divisiones,
+inicio más temprano, cierre más tardío y máximo de cada duración informada
+para evitar sumar dos veces los tiempos del caso.
+La clave operativa de cliente es Remoto completo AR. seguido de dígitos,
+sin espacios y sin distinguir mayúsculas. No se usan teléfonos u otros remotos.
+
+Validación técnica (requiere Node): node validar.cjs
+Validación de fichas y filtros: node validar-asesores.cjs

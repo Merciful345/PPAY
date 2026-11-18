@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),FcrModel=require('../fcr-model.js'),FcrComparison=require('../fcr-comparison.js');
+const ctx=vm.createContext({document:{getElementById:()=>({})},Intl,Date,Number,String,Array,Set,Map,Promise,Error,Math,FcrModel,FcrComparison,setTimeout,clearTimeout});vm.runInContext(fs.readFileSync('fcr-import.js','utf8'),ctx);const view=vm.runInContext('FcrImportView',ctx);
+view.state.data=FcrModel.fromRows([['Representante','Usuario Teco','ATENDIDAS','CODIGO_LLAMADA','RECONTACTO_7D','RECONTACTO_24H','RECONTACTO_12H'],['Asesor ficticio','001',1,'ficticio',0,0,0]]);view.state.fileName='mes-ficticio.csv';view.state.filePeriod='2026-11';view.syncRoute(null);
+const home=view.render('resumen');assert(home.includes('executive-kpis'));assert(!home.includes('fcr-import-matrix'));assert(!home.includes('fcr-records'));assert(!home.includes('fcr-month-comparison'));assert(!home.includes('id="fcrWorkbook"'));assert(home.includes('#/fcr/asesores'));
+const advisors=view.render('asesores');assert(advisors.includes('fcr-import-matrix'));assert(advisors.includes('fcrQuery'));assert(!advisors.includes('fcr-records'));assert(!advisors.includes('fcr-library'));assert(!advisors.includes('fcr-month-comparison'));
+const compare=view.render('comparacion');assert(compare.includes('fcr-month-comparison'));assert(compare.includes('Copiar resultados de todos'));assert(!compare.includes('fcrQuery'));assert(!compare.includes('fcr-import-matrix'));
+const files=view.render('archivos');assert(files.includes('fcr-library'));assert(files.includes('id="fcrWorkbook"'));assert(!files.includes('fcr-records'));assert(!files.includes('fcr-import-matrix'));
+const records=view.render('registros');assert(records.includes('fcr-records'));assert(records.includes('fcrQuery'));assert(!records.includes('fcr-import-matrix'));assert(!records.includes('executive-kpis'));
+assert.equal(view.state.fileName,'mes-ficticio.csv');assert.equal(view.state.data.records.length,1);
+console.log('OK: resumen liviano y rutas separadas para asesores, comparación, registros y archivos sin perder la fuente seleccionada.');

@@ -1,0 +1,13 @@
+'use strict';
+const FcrNotifications=(()=>{
+ let owner=null,count=null,error='',expanded=false,timer=null,inFlight=false,queued=false,epoch=0;
+ const container=()=>document.getElementById('userNotifications');
+ function render(){const root=container();if(!root)return;root.hidden=!owner;if(!owner){root.innerHTML='';return;}const label=count==null?'Notificaciones':`${count} solicitudes pendientes`;root.innerHTML=`<button id="notificationBell" aria-label="${label}" aria-expanded="${expanded}" aria-controls="notificationPanel"><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-label">Notificaciones</span>${count>0?`<span class="notification-count">${count}</span>`:''}</button><div id="notificationPanel" class="notification-panel" ${expanded?'':'hidden'}><strong>Solicitudes de acceso</strong><p>${error?'No se pudo actualizar el estado.':count==null?'Consultando solicitudes…':count===0?'No hay solicitudes pendientes.':`Tenés ${count} ${count===1?'solicitud pendiente':'solicitudes pendientes'}.`}</p><button data-notification-requests>Revisar solicitudes</button><button data-notification-refresh>Actualizar</button></div>`;}
+ async function refresh(){if(!owner)return;if(inFlight){queued=true;return;}const current=epoch;inFlight=true;try{const value=await FcrCloud.pendingCount();if(current!==epoch)return;count=value;error='';}catch(e){if(current===epoch)error='error';}finally{if(current===epoch){inFlight=false;render();if(queued){queued=false;refresh();}}}}
+ function syncSession(){const next=FcrCloud.isAuthorized()&&FcrCloud.isAdmin()?FcrCloud.user().id:null;if(owner===next)return;epoch++;if(timer)clearInterval(timer);timer=null;owner=next;count=null;error='';expanded=false;inFlight=false;queued=false;render();if(owner){refresh();timer=setInterval(()=>{if(!document.hidden)refresh();},30000);}}
+ const root=container();if(root)root.onclick=e=>{if(e.target.closest('#notificationBell')){expanded=!expanded;render();if(expanded)refresh();}else if(e.target.closest('[data-notification-refresh]'))refresh();else if(e.target.closest('[data-notification-requests]')){expanded=false;render();FcrAccountView.reset();location.hash='#/mi-perfil';renderRoutes();}};
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+ document.addEventListener('click',e=>{if(expanded&&root&&!root.contains(e.target)){expanded=false;render();}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&expanded){expanded=false;render();document.getElementById('notificationBell')?.focus();}});
+ return {syncSession,refresh};
+})();

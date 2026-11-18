@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+let admin=true,authorized=true,count=2,timer=null,reset=0,routeRenders=0,calls=0,delayed=null;
+const elements=new Map(),element=id=>{if(!elements.has(id))elements.set(id,{hidden:true,innerHTML:'',contains:()=>false,focus(){}});return elements.get(id);},listeners={};
+const cloud={isAdmin:()=>admin,isAuthorized:()=>authorized,user:()=>({id:'ficticio'}),async pendingCount(){calls++;if(delayed)return new Promise(resolve=>{delayed=resolve;});return count;}};
+const ctx=vm.createContext({FcrCloud:cloud,FcrAccountView:{reset(){reset++;}},document:{hidden:false,getElementById:element,addEventListener:(name,fn)=>listeners[name]=fn},location:{hash:'#/fcr'},renderRoutes(){routeRenders++;},setInterval:fn=>{timer=fn;return 1;},clearInterval:()=>{timer=null;}});vm.runInContext(fs.readFileSync('fcr-notifications.js','utf8'),ctx);const view=vm.runInContext('FcrNotifications',ctx),tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+const click=selector=>({target:{closest:value=>value===selector?{}:null}});
+(async()=>{view.syncSession();await tick();assert(!element('userNotifications').hidden);assert(element('userNotifications').innerHTML.includes('notification-count">2'));assert(timer);
+element('userNotifications').onclick(click('#notificationBell'));await tick();assert(element('userNotifications').innerHTML.includes('Tenés 2 solicitudes pendientes'));
+element('userNotifications').onclick(click('[data-notification-requests]'));assert.equal(ctx.location.hash,'#/mi-perfil');assert.equal(reset,1);assert.equal(routeRenders,1);
+count=0;await view.refresh();assert(!element('userNotifications').innerHTML.includes('notification-count'));assert(element('userNotifications').innerHTML.includes('No hay solicitudes pendientes'));
+delayed=true;const stale=view.refresh();await tick();const resolve=delayed;authorized=false;view.syncSession();resolve(99);await stale;assert(element('userNotifications').hidden);assert.equal(element('userNotifications').innerHTML,'');assert.equal(timer,null);
+authorized=true;admin=false;const before=calls;view.syncSession();await tick();assert.equal(calls,before);assert(element('userNotifications').hidden);
+console.log('OK: campana, contador, navegación a pendientes, actualización y notificaciones solo del administrador sin datos tras salir.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
+let admin=true,assigned=null,removed=null,waitForTeam=null;const members=[];
+const source=[{agent:'teco:0001',representative:'Agente <uno>',user:'0001',bms:''}];
+const cloud={isAdmin:()=>admin,async team(target){if(waitForTeam)return new Promise(resolve=>{waitForTeam=resolve;});return {supervisor:{id:target,name:target===id?'Supervisora de prueba':'Otro supervisor',email:'supervisor@example.invalid'},members:members.map(r=>({...r}))};},async assignAgent(target,agent){assigned={target,agent};members.push({...agent});},async removeAgent(target,key){removed={target,key};members.splice(members.findIndex(a=>a.agent_key===key),1);}};
+const ctx=vm.createContext({FcrCloud:cloud,FcrImportView:{state:{data:{records:source}}},String,Map,currentRoute:()=> 'equipo',renderRoutes(){}});vm.runInContext(fs.readFileSync('fcr-team.js','utf8'),ctx);const view=vm.runInContext('FcrTeamView',ctx),tick=()=>new Promise(resolve=>setTimeout(resolve,0)),event=(selector,dataset)=>({target:{closest:s=>s===selector?{dataset}:null}});
+(async()=>{view.render(id);view.start();await tick();assert(view.render(id).includes('Supervisora de prueba'));assert(view.render(id).includes('teamManualForm'));assert(view.render(id).includes('Agente &lt;uno&gt;'));
+await view.submit({target:{id:'teamManualForm',elements:{agentName:{value:'Agente manual'},agentCode:{value:'0007'}}},preventDefault(){}});assert.equal(assigned.agent.agent_key,'teco:0007');assert.equal(assigned.target,id);assert(view.render(id).includes('Agente manual'));assert(view.render(id).includes('#/fcr/usuario/teco%3A0007'));
+await view.submit({target:{id:'teamKnownForm',elements:{agentKey:{value:'teco:0001'}}},preventDefault(){}});assert.equal(assigned.agent.user_code,'0001');assert(view.render(id).includes('Agente &lt;uno&gt;'));
+await view.click(event('[data-team-remove]',{teamRemove:'teco:0007'}));assert(view.render(id).includes('team-remove-confirm'));await view.click(event('[data-team-remove-confirm]',{teamRemoveConfirm:'teco:0007'}));assert.equal(removed.key,'teco:0007');assert(!view.render(id).includes('Agente manual'));assert.equal(source[0].user,'0001');
+admin=false;view.reset();view.render(id);view.start();await tick();assert(!view.render(id).includes('teamManualForm'));assert(!view.render(id).includes('data-team-remove='));assert(view.render(id).includes('Agente &lt;uno&gt;'));
+admin=true;view.reset();waitForTeam=true;view.render(id);view.start();const resolve=waitForTeam;waitForTeam=null;view.render(other);view.start();await tick();resolve({supervisor:{id,name:'Obsoleto'},members:[]});await tick();assert(view.render(other).includes('Otro supervisor'));assert(!view.render(other).includes('Obsoleto'));
+console.log('OK: perfiles de equipo, agregar desde archivo o manual, ceros iniciales, quitar sin borrar datos, consulta del supervisor y respuestas obsoletas descartadas.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -2,7 +2,7 @@
 const FcrDrop=(()=>{
  let depth=0;
  const files=e=>Array.from(e.dataTransfer?.types||[]).includes('Files')||!!e.dataTransfer?.files?.length;
- function allowed(){return typeof FcrImportView!=='undefined'&&typeof currentRoute==='function'&&currentRoute()==='fcr'&&!(typeof FcrCloud!=='undefined'&&FcrCloud.requiresLogin&&!FcrCloud.isAuthorized())&&!FcrImportView.state.busy&&!FcrImportView.state.batchBusy;}
+ function allowed(){return typeof FcrImportView!=='undefined'&&typeof currentRoute==='function'&&currentRoute()==='fcr'&&!(typeof FcrCloud!=='undefined'&&FcrCloud.requiresLogin&&!FcrCloud.isAuthorized())&&!(typeof FcrCloud!=='undefined'&&FcrCloud.requiresLogin&&!FcrCloud.isAdmin())&&!FcrImportView.state.busy&&!FcrImportView.state.batchBusy;}
  function reset(){depth=0;document.getElementById('fcrDropOverlay').hidden=true;}
  function enter(e){if(!files(e))return;e.preventDefault();if(!allowed())return;depth++;document.getElementById('fcrDropOverlay').hidden=false;}
  function over(e){if(!files(e))return;e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect=allowed()?'copy':'none';}

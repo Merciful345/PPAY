@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {supervisorKey,prepare}=require('../fcr-auto-teams');
+assert.equal(supervisorKey('Nieva, Silvia Marcela'),supervisorKey('Silvia Marcela Nieva'));
+assert.equal(supervisorKey('José Pérez'),supervisorKey('Perez Jose'));
+const row={agent:'teco:0007',representative:'Aguirre, Emanuel',user:'0007',bms:'001',supervisor:'Nieva, Silvia Marcela'};
+const result=prepare([row,{...row,supervisor:'Silvia Marcela Nieva'}]);
+assert.equal(result.assignments.length,1);assert.equal(result.assignments[0].user_code,'0007');
+assert.equal(prepare([row,{...row,supervisor:'Otra Persona'}]).conflicts.length,1);
+assert.equal(prepare([{...row,supervisorConflict:true}]).assignments.length,0);
+assert.equal(prepare([{...row,supervisor:''}]).missing.length,1);
+console.log('OK equipos automaticos: nombres completos, ceros, conflictos y ausentes');

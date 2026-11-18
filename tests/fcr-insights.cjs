@@ -1,0 +1,12 @@
+'use strict';
+const assert=require('node:assert/strict'),model=require('../fcr-model'),insights=require('../fcr-insights'),auto=require('../fcr-auto-teams');
+const h=['Representante','Usuario Teco','Supervisor','ATENDIDAS','CODIGO_LLAMADA','RECONTACTO_7D','RECONTACTO_24H','RECONTACTO_12H','TAB1'];
+const parse=rows=>model.fromRows([h,...rows]);
+const current=parse([['Ana','001','Silvia',1,'1',1,0,0,'Pagos'],['Ana','001','Silvia',1,'2',0,0,0,'Pagos'],['Luis','002','Otra',1,'3',1,1,0,'Tarjeta'],['Sin datos','003','',1,'4','','','','']]);
+const previous=parse([['Ana','001','Silvia',1,'0',0,0,0,'Pagos'],['Luis','002','Otra',1,'9',1,1,0,'Tarjeta']]);
+const drops=insights.drops(current.records,previous.records,'7d',model);assert.equal(drops.length,1);assert.equal(drops[0].agent,'teco:001');assert.equal(drops[0].delta,-50);assert.equal(drops[0].valid,2);
+assert.equal(insights.reasons(current.records,'7d').reduce((n,r)=>n+r.count,0),2);
+assert.equal(insights.reasons(current.records,'12h').length,0);
+const audit=insights.audit([{id:'a',period:'2026-09',digest:'same'},{id:'b',period:'2026-11',digest:'same'},{id:'c',period:'2026-11',digest:'other'},{id:'d',period:''}],current,auto);
+assert.deepEqual(audit.missing,['2026-10']);assert.equal(audit.repeated.length,1);assert.equal(audit.identical.length,1);assert.equal(audit.unperioded.length,1);assert.equal(audit.teams.missing.length,1);
+console.log('OK alertas: caídas comparables, motivos por ventana y controles de meses/versiones/contenido.');

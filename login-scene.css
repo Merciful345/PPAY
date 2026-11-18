@@ -1,0 +1,18 @@
+html[data-theme] body[data-auth="locked"]{background:#101020;background-image:radial-gradient(ellipse 380px 260px at 83% 5%,#5443ff35,transparent 75%),radial-gradient(ellipse 430px 280px at 10% 68%,#5841ff26,transparent 75%),url('login-scene.svg');background-size:auto,auto,cover;background-attachment:fixed}
+body[data-auth="locked"]::before{display:none}
+html[data-theme] body[data-auth="locked"]>header{position:absolute;top:0;left:0;right:0;background:transparent;border:0;box-shadow:none;min-height:60px;padding:14px 4%;z-index:2;pointer-events:none}
+body[data-auth="locked"] header .header-brands{display:none}body[data-auth="locked"] header .header-tools{pointer-events:auto;display:flex;grid-column:3;justify-self:end}
+html[data-theme] body[data-auth="locked"] header button{background:#1b1d2bd9;color:#c7bdff;border-color:#ffffff20}
+html[data-theme] body[data-auth="locked"] .auth-screen{min-height:100dvh;padding:88px 5% 60px;display:flex;align-items:center;justify-content:center}
+html[data-theme] body[data-auth="locked"] .auth-shell{max-width:1200px;grid-template-columns:1.13fr .87fr;min-height:620px;background:linear-gradient(140deg,#20212b,#191a24);border-color:#ffffff25;box-shadow:0 35px 100px #0005,inset 0 1px #ffffff08}
+html[data-theme] body[data-auth="locked"] .login-intro{padding:64px 60px;background:linear-gradient(140deg,#6751fa,#573fe2 52%,#4833c4);border-right:1px solid #ffffff20}
+html[data-theme] body[data-auth="locked"] .login-intro h2{font-size:48px;letter-spacing:-1.7px;margin:0 0 20px;color:#fff}
+html[data-theme] body[data-auth="locked"] .login-intro::after{width:360px;height:360px;border-width:65px;top:-120px;right:-210px;border-color:#ffffff05}
+html[data-theme] body[data-auth="locked"] .auth-form-area{padding:62px 56px;color:#f4f2fc}
+html[data-theme] body[data-auth="locked"] .login-card h1{color:#f4f2fc}html[data-theme] body[data-auth="locked"] .login-card>p,html[data-theme] body[data-auth="locked"] .login-card label{color:#b9b6cb}html[data-theme] body[data-auth="locked"] .login-card .eyebrow{color:#c3b5ff}
+html[data-theme] body[data-auth="locked"] .login-card input{background:#2d3349;color:#f5f3ff;border:1px solid #ffffff04;border-radius:10px;height:47px}
+html[data-theme] body[data-auth="locked"] .login-card input:focus{outline:2px solid #b8a6ff;outline-offset:2px}
+html[data-theme] body[data-auth="locked"] .login-card .login-submit{background:linear-gradient(110deg,#674dff,#6045ed);color:white;border:1px solid #a292ff40;box-shadow:0 7px 23px #5842eb30}
+html[data-theme] body[data-auth="locked"] .login-card .login-toggle{color:#c2b5ff}html[data-theme] body[data-auth="locked"] .login-card #cloudStatus{color:#ffc2cf}
+@media(max-width:1000px){html[data-theme] body[data-auth="locked"] .login-intro{padding:44px 32px}html[data-theme] body[data-auth="locked"] .auth-form-area{padding:42px 32px}html[data-theme] body[data-auth="locked"] .login-intro h2{font-size:39px}}
+@media(max-width:700px){html[data-theme] body[data-auth="locked"] .auth-shell{grid-template-columns:1fr;max-width:520px;min-height:0}html[data-theme] body[data-auth="locked"] .auth-screen{padding:80px 16px 28px;align-items:start}html[data-theme] body[data-auth="locked"] .login-intro{padding:30px;border:0;border-bottom:1px solid #ffffff20}html[data-theme] body[data-auth="locked"] .login-intro h2{font-size:32px!important;margin:0!important}html[data-theme] body[data-auth="locked"] .auth-form-area{padding:32px 27px}}

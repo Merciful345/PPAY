@@ -12,9 +12,10 @@ async function verify(client){const approved=randomUUID(),outsider=randomUUID(),
  await client.query('insert into public.fcr_access_admins(user_id) values($1)',[approved]);
  await client.query("update public.fcr_access_requests set status='approved' where user_id=$1",[approved]);
  assert.equal((await client.query('select user_id from public.fcr_supervisors where user_id=$1',[approved])).rowCount,1);
- async function role(name,user){await client.query('reset role');await client.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:user,role:name})]);await client.query('set local role '+name);}
- async function denied(sql,args=[]){await client.query('savepoint denied');try{await client.query(sql,args);throw Error('Se permitió una operación que debía rechazarse.');}catch(error){assert.equal(error.code,'42501');}finally{await client.query('rollback to savepoint denied');}}
+ async function role(name,user,session){await client.query('reset role');await client.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:user,role:name,...(session?{session_id:session}:{})})]);await client.query('set local role '+name);}
+ async function denied(sql,args=[],code='42501'){await client.query('savepoint denied');try{await client.query(sql,args);throw Error('Se permitió una operación que debía rechazarse.');}catch(error){assert.equal(error.code,code);}finally{await client.query('rollback to savepoint denied');}}
  await role('authenticated',approved);
+ const users=await client.query("select * from public.list_fcr_users('all',0,1000)");assert(users.rows.some(u=>u.user_id===outsider));assert(users.rows.some(u=>u.user_id===approved&&u.is_admin));
  await client.query("insert into public.fcr_imports(id,object_path,name,size,digest,created_by) values($1,$2,'prueba-ficticia.csv',10,$3,$4)",[id,'files/'+id+'/prueba.csv','0'.repeat(64),approved]);
  assert.equal((await client.query('select id from public.fcr_imports where id=$1',[id])).rowCount,1);
  await client.query("update public.fcr_imports set period='2026-10' where id=$1",[id]);
@@ -38,12 +39,88 @@ async function verify(client){const approved=randomUUID(),outsider=randomUUID(),
  await role('authenticated',outsider);
  assert.equal((await client.query('select id from public.fcr_imports where id=$1',[id])).rowCount,1);
  // Un supervisor aprobado no puede aprobar otras cuentas ni autopromoverse.
+ await denied("insert into public.fcr_imports(id,object_path,name,size,digest,created_by) values($1,$2,'bloqueado.csv',10,$3,$4)",[randomUUID(),'files/'+id+'/rechazada.csv','2'.repeat(64),outsider]);
+ assert.equal((await client.query("update public.fcr_imports set period='2026-09' where id=$1",[id])).rowCount,0);
+ assert.equal((await client.query('delete from public.fcr_imports where id=$1',[id])).rowCount,0);
+ await denied("insert into storage.objects(bucket_id,name) values('fcr-files','files/bloqueado.csv')");
+ await denied("select * from public.list_fcr_users('all',0,1000)");
  await denied('insert into public.fcr_access_admins(user_id) values($1)',[outsider]);
  await denied("select public.review_fcr_access($1,'approved')",[approved]);
+ await denied("select * from public.list_fcr_audit('',0,50)");
+ await denied('select * from public.fcr_audit_events');
+ await denied('select public.reset_fcr_password($1)',[outsider]);
+ await role('authenticated',approved);
+ await denied('select public.reset_fcr_password($1)',[approved]);
+ const agent='teco:test-'+id;
+ await client.query('select public.assign_fcr_agent($1,$2,$3,$4,$5)',[outsider,agent,'Agente ficticio','test-'+id,'']);
+ const team=(await client.query('select public.get_fcr_team($1) as team',[outsider])).rows[0].team;
+ assert.equal(team.members.length,1);assert.equal(team.members[0].agent_key,agent);
+ const directory=await client.query('select * from public.list_fcr_teams()');assert(directory.rows.some(t=>t.supervisor_id===outsider&&t.members.some(a=>a.agent_key===agent)));
+ await denied('select public.assign_fcr_agent($1,$2,$3,$4,$5)',[approved,agent,'Agente ficticio','test-'+id,''],'23505');
+ await role('authenticated',outsider);
+ assert.equal((await client.query('select public.get_fcr_team($1) as team',[outsider])).rows[0].team.members.length,1);
+ await denied('select public.get_fcr_team($1)',[approved]);
+ await denied('select * from public.list_fcr_teams()');
+ await denied('select public.assign_fcr_agent($1,$2,$3,$4,$5)',[outsider,agent,'Otro nombre','test-'+id,'']);
+ await denied('select public.remove_fcr_agent($1,$2)',[outsider,agent]);
+ await denied('insert into public.fcr_supervisor_agents(agent_key,supervisor_id,agent_name) values($1,$2,$3)',['nombre:Prohibido',outsider,'Prohibido']);
+ await role('authenticated',approved);
+ await client.query('select public.remove_fcr_agent($1,$2)',[outsider,agent]);
+ assert.equal((await client.query('select public.get_fcr_team($1) as team',[outsider])).rows[0].team.members.length,0);
+ // Equipos autom?ticos: perfiles sin cuenta, prioridad temporal y cambios manuales.
+ const autoKey='teco:auto-'+id;
+ const payload=name=>JSON.stringify([{agent_key:autoKey,agent_name:'Agente automatico',user_code:'auto-'+id,bms_code:'',supervisor_name:name}]);
+ const sync=async name=>(await client.query('select public.sync_fcr_teams($1,$2::jsonb) as stats',[id,payload(name)])).rows[0].stats;
+ assert.equal((await sync('Nieva, Silvia Marcela '+id)).updated,1);
+ let allTeams=(await client.query('select * from public.list_fcr_teams()')).rows;
+ let automatic=allTeams.find(t=>t.members.some(a=>a.agent_key===autoKey));assert(automatic);assert.equal(automatic.email,'');
+ assert.equal((await sync('Silvia Marcela Nieva '+id)).updated,1);
+ assert.equal((await client.query('select public.get_fcr_team($1) as team',[automatic.supervisor_id])).rows[0].team.members.length,1);
+ await client.query("update public.fcr_imports set period='2026-09' where id=$1",[id]);
+ assert.equal((await sync('Otro supervisor '+id)).older_ignored,1);
+ await client.query("update public.fcr_imports set period='2026-11' where id=$1",[id]);
+ assert.equal((await sync('Otro supervisor '+id)).updated,1);
+ allTeams=(await client.query('select * from public.list_fcr_teams()')).rows;
+ automatic=allTeams.find(t=>t.members.some(a=>a.agent_key===autoKey));
+ await client.query('select public.assign_fcr_agent($1,$2,$3,$4,$5)',[automatic.supervisor_id,autoKey,'Agente automatico','auto-'+id,'']);
+ assert.equal((await sync('Nieva Silvia Marcela '+id)).manual_preserved,1);
+ await client.query('select public.remove_fcr_agent($1,$2)',[automatic.supervisor_id,autoKey]);
+ assert.equal((await sync('Nieva Silvia Marcela '+id)).manual_preserved,1);
+ await role('authenticated',outsider);
+ await denied('select public.sync_fcr_teams($1,$2::jsonb)',[id,payload('Supervisor ajeno')]);
+ await denied('select public.get_fcr_team($1)',[automatic.supervisor_id]);
+ await role('authenticated',approved);
+ const audit=(await client.query("select * from public.list_fcr_audit('',0,100)")).rows;
+ assert(audit.some(r=>r.category==='files'&&r.details.file_id===id));
+ assert(audit.some(r=>r.category==='teams'&&r.details.agent_key===autoKey));
+ assert(audit.some(r=>r.action==='Acceso aprobado'&&r.target===outsider+'@ppay.invalid'));
+ await role('authenticated',outsider);
+ await denied("select * from public.list_fcr_audit('',0,50)");
+ await denied('select * from public.fcr_audit_events');
+ await denied("insert into public.fcr_audit_events(category,action,target) values('files','Falso','Falso')");
+ await role('authenticated',approved);
+ const temporary=(await client.query('select public.reset_fcr_password($1) as password',[outsider])).rows[0].password;
+ const history=(await client.query("select * from public.list_fcr_audit('',0,100)")).rows;
+ assert(history.some(e=>e.target==='prueba-ficticia.csv'&&e.action==='Archivo cargado'));
+ assert(history.some(e=>e.action==='Agente agregado'&&e.target==='Agente ficticio'));
+ assert(history.some(e=>e.action==='Contrase\u00f1a blanqueada'&&e.details.user_id===outsider));
+ assert(!JSON.stringify(history).includes(temporary));
+ await denied("insert into public.fcr_audit_events(category,action,target) values('files','Falso','Falso')");
+ assert(temporary.length>=20);assert(temporary.includes('!'));assert(temporary.includes('A'));
+ await role('authenticated',outsider);
+ assert.equal((await client.query('select id from public.fcr_imports where id=$1',[id])).rowCount,0);
+ await client.query('reset role');
+ assert.equal((await client.query('select encrypted_password=extensions.crypt($2,encrypted_password) as matches from auth.users where id=$1',[outsider,temporary])).rows[0].matches,true);
+ const session=randomUUID();await client.query('insert into auth.sessions(id,user_id,created_at,updated_at) values($1,$2,now(),now())',[session,outsider]);
+ await role('authenticated',outsider,session);
+ assert.equal((await client.query('select id from public.fcr_imports where id=$1',[id])).rowCount,1);
+ await denied("select * from public.list_fcr_audit('',0,50)");
+ await denied('select * from public.fcr_audit_events');
+ await denied('select public.reset_fcr_password($1)',[outsider]);
  await role('anon',outsider);await denied('select id from public.fcr_imports');
  await client.query('reset role');
  console.log('OK remoto: bucket privado, supervisor autorizado, RLS bloquea anónimos y usuarios ajenos, originales sin sobrescritura. Datos ficticios revertidos.');
  }finally{await client.query('rollback');}}
 async function connect(){const ca=process.env.PGSSLROOTCERT?fs.readFileSync(process.env.PGSSLROOTCERT,'utf8'):await (await fetch('https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt')).text(),client=new Client({connectionString:process.env.DATABASE_URL,ssl:{ca,rejectUnauthorized:true},connectionTimeoutMillis:15000});try{await client.connect();await verify(client);}finally{await client.end();}}
-if(require.main===module)connect().catch(error=>{console.error('Falló la verificación remota:',error.code||error.name);process.exitCode=1;});
+if(require.main===module)connect().catch(error=>{console.error('Falló la verificación remota:',error.code||error.name,error.message,error.detail||'',error.where||'');process.exitCode=1;});
 module.exports=verify;

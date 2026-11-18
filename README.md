@@ -4,6 +4,8 @@ Tablero en español para analizar FCR. Funciona en el navegador, procesa Excel y
 
 ## Abrir la aplicación
 
+El botón **Tema oscuro / Tema claro** de la barra superior cambia la apariencia de toda la aplicación: ingreso, tablero, perfiles, solicitudes, tablas y diálogos. La elección queda guardada en este navegador, se restaura al recargar y se aplica sin reiniciar la sesión ni modificar filtros o datos. El tema predeterminado es claro.
+
 1. Descargá o cloná este repositorio.
 2. Abrí `index.html` con Chrome o Edge.
 3. Pulsá **Cargar Excel o CSV** y elegí una o varias exportaciones de FCR.
@@ -25,7 +27,21 @@ El guardado conserva los bytes originales y verifica su SHA-256 al descargar. No
 
 La configuración pública del cliente está en `supabase-config.js`. Nunca agregar contraseñas PostgreSQL, claves `secret` o `service_role` a ese archivo. La sesión del supervisor se conserva en este navegador; cerrar sesión cierra las ventanas de detalle y retira los datos compartidos de la pantalla. Los cálculos FCR siguen ejecutándose en el navegador.
 
+### Equipos por supervisor
+
+**Mi perfil → Ver mi equipo** abre una página propia del supervisor (`#/supervisores/<id>`). Gonzalo puede entrar a **Todos los usuarios → Ver equipo** en cada cuenta aprobada. Cada perfil muestra sus agentes asignados y enlaces a su FCR. Solo Gonzalo puede agregar o quitar integrantes; el supervisor puede consultar su propio equipo y no puede editarlo ni consultar el perfil de equipo de otro supervisor.
+
+Los equipos se actualizan al cargar o abrir un Excel/CSV: cada Representante se asigna al Supervisor indicado. Se crean equipos aunque ese supervisor todavía no tenga cuenta; una cuenta aprobada se vincula solo si coincide su nombre completo, sin diferencias de orden, acentos o puntuación. No se conceden permisos de acceso por aparecer en un archivo.
+
+Los cambios manuales de Gonzalo tienen prioridad. Quitar un agente impide que se vuelva a agregar automáticamente; se puede agregar de nuevo manualmente. Un archivo de un mes anterior no reemplaza asignaciones automáticas más recientes. Si un agente tiene distintos supervisores en el mismo archivo, no se le asigna automáticamente. La migración `008-automatic-teams.sql` incorpora perfiles y sincronización; los archivos originales y los cálculos FCR no cambian.
+
 ### Preparación administrativa
+
+Solo Gonzalo, como administrador, puede cargar Excel/CSV, cambiar sus períodos o eliminar archivos. Los supervisores aprobados tienen acceso de lectura; el selector y el arrastre de archivos están deshabilitados para ellos y las políticas de Supabase también rechazan las escrituras. Para actualizar una instalación existente, aplicar `004-admin-files-and-users.sql` y `005-password-reset.sql` después de las migraciones anteriores. La preparación automática aplica las ocho migraciones en orden.
+
+La campana de la barra superior muestra a Gonzalo cuántas solicitudes están pendientes. Se actualiza al entrar, al revisar una solicitud y cada 30 segundos mientras la pestaña está visible. **Mi perfil → Todos los usuarios** incluye las cuentas pendientes, rechazadas y aprobadas, con su rol y último ingreso. La información de administración no está disponible para supervisores comunes.
+
+En esa lista, **Blanquear contraseña** permite al administrador generar una contraseña temporal para una cuenta que no sea administradora. Requiere confirmar dentro de la fila. Se reemplaza el hash de la contraseña, se cierran sus sesiones anteriores y se muestra la nueva clave únicamente en esa vista para copiarla. No se guarda la clave en texto plano ni se envía por correo. La cuenta puede cambiarla desde **Mi perfil → Cambiar mi contraseña**. La recuperación de una cuenta administradora queda fuera de este botón para evitar bloquear al propio administrador.
 
 En **Mi perfil → Solicitudes de acceso**, Gonzalo puede alternar entre **Pendientes** y **Rechazadas**. Las rechazadas tienen el botón **Aprobar acceso** para cambiar la decisión. La persona podrá pulsar **Revisar estado** o volver a ingresar. Solo el administrador puede hacerlo; la base rechaza cambios desde una lista desactualizada. Para instalaciones existentes, aplicar `supabase/003-review-rejected.sql` después de las migraciones anteriores.
 
@@ -66,6 +82,10 @@ En Supabase **Authentication → Sign In / Providers → Email**, desactivar **C
 - Las tarjetas **TMO** y **CxH** del perfil muestran únicamente **PRÓXIMAMENTE**.
 
 ## Vista activa
+
+El tablero está separado por rutas: **Resumen** (`#/fcr`) muestra los indicadores generales; **Asesores**, **Comparación mensual**, **Registros** y **Archivos** tienen sus propias pestañas bajo `#/fcr/...`. El archivo abierto se conserva al navegar. Los filtros de detalle se usan en Asesores y Registros; el resumen y la comparación general usan todos los registros del archivo.
+
+Gonzalo tiene además **Equipos** (`#/equipos`), con todos los supervisores aprobados y una vista previa de sus agentes. Desde cada tarjeta puede abrir y editar el equipo completo. Los supervisores comunes tienen el enlace a su propio equipo. La migración `007-team-directory.sql` protege el directorio completo para el administrador.
 
 Por ahora se muestra solo **FCR**. La página abre en `#/fcr`; las rutas anteriores redirigen a esta vista. No se recupera ni se procesa el CSV antiguo al iniciar, pero su copia local se conserva.
 
@@ -131,7 +151,13 @@ node tests/fcr-cloud.cjs
 node tests/fcr-cloud-auth.cjs
 node tests/fcr-login-view.cjs
 node tests/fcr-account.cjs
+node tests/fcr-team.cjs
+node tests/fcr-teams-directory.cjs
+node tests/fcr-sections.cjs
 node tests/fcr-drop.cjs
+node tests/fcr-notifications.cjs
+node tests/theme.cjs
+node tests/fcr-team.cjs
 ```
 
 La prueba utiliza únicamente datos ficticios. No requiere instalar dependencias.
@@ -139,3 +165,15 @@ La prueba utiliza únicamente datos ficticios. No requiere instalar dependencias
 ## Archivos locales excluidos
 
 El repositorio contiene la aplicación, no los datos de atención. El CSV, las exportaciones, los documentos con ejemplos reales, las credenciales y las pruebas locales que referencian casos reales se excluyen mediante `.gitignore`.
+
+
+### Inicio, seguimiento y control
+
+El resumen de cada supervisor muestra su equipo asignado y sus FCR. Gonzalo conserva la vista general. Las alertas identifican caídas comparables frente al mes anterior y los cinco motivos originales con más recontactos por plazo; informan los volúmenes y la diferencia en puntos porcentuales. El perfil del asesor incluye los últimos 12 meses hasta el archivo abierto, con selección de versión cuando hay varias. Los meses sin datos no se convierten en cero. Los filtros de la lista se recuperan al regresar desde un perfil. Archivos incluye controles de meses faltantes, versiones, contenido idéntico, filas omitidas y supervisores ambiguos.
+
+
+### PDF e historial
+
+En Resumen se descarga un PDF del equipo del supervisor (o de todos los asesores para Gonzalo). En cada perfil de equipo, Descargar PDF del equipo usa los integrantes de ese perfil. Incluye las tres ventanas FCR, resultados individuales, variación mensual y cinco motivos con más recontactos en 7 días. Usa el archivo abierto completo, sin filtros; compara la misma composición actual del equipo. Si hay varias versiones anteriores, hay que elegir una en Comparación mensual. La generación es local, sin transmitir datos a servicios de PDF.
+
+Historial (`#/historial`) es exclusivo del administrador. La migración `009-audit-history.sql` registra desde su instalación cargas, eliminaciones, cambios de período, asignaciones de agentes, decisiones de acceso y blanqueos. Los eventos se generan en la base dentro de la misma transacción, no se pueden editar desde la página y nunca almacenan contraseñas. No se reconstruyen movimientos anteriores a la instalación.

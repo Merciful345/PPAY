@@ -2,13 +2,13 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const events={},windowEvents={},overlay={hidden:true},batches=[];let authorized=true,route='fcr';
 const view={state:{busy:false,batchBusy:false},async importMany(files){batches.push(files);}};
-const ctx=vm.createContext({Array,FcrImportView:view,FcrCloud:{requiresLogin:true,isAuthorized:()=>authorized},currentRoute:()=>route,document:{getElementById:()=>overlay,addEventListener:(type,fn)=>events[type]=fn},window:{addEventListener:(type,fn)=>windowEvents[type]=fn}});vm.runInContext(fs.readFileSync('fcr-drop.js','utf8'),ctx);
+const ctx=vm.createContext({Array,FcrImportView:view,FcrCloud:{requiresLogin:true,isAuthorized:()=>authorized,isAdmin:()=>true},currentRoute:()=>route,document:{getElementById:()=>overlay,addEventListener:(type,fn)=>events[type]=fn},window:{addEventListener:(type,fn)=>windowEvents[type]=fn}});vm.runInContext(fs.readFileSync('fcr-drop.js','utf8'),ctx);
 const excel=new File(['ficticio'],'mes.xlsx'),csv=new File(['ficticio'],'mes.csv');
 const event=(files=[],types=['Files'])=>({dataTransfer:{files,types,dropEffect:''},prevented:false,preventDefault(){this.prevented=true;}});
 (async()=>{events.dragenter(event());assert(!overlay.hidden);events.dragenter(event());events.dragleave(event());assert(!overlay.hidden);events.dragleave(event());assert(overlay.hidden);
 const hover=event();events.dragover(hover);assert(hover.prevented);assert.equal(hover.dataTransfer.dropEffect,'copy');const dropped=event([excel,csv]);await events.drop(dropped);assert(dropped.prevented);assert(overlay.hidden);assert.equal(batches.length,1);assert.equal(batches[0][0],excel);assert.equal(batches[0][1],csv);
 view.state.busy=true;const blocked=event([excel]);events.dragover(blocked);assert.equal(blocked.dataTransfer.dropEffect,'none');await events.drop(blocked);assert.equal(batches.length,1);view.state.busy=false;
-authorized=false;await events.drop(event([excel]));assert.equal(batches.length,1);authorized=true;route='cuenta';await events.drop(event([excel]));assert.equal(batches.length,1);route='fcr';
+authorized=false;await events.drop(event([excel]));assert.equal(batches.length,1);authorized=true;ctx.FcrCloud.isAdmin=()=>false;await events.drop(event([excel]));assert.equal(batches.length,1);ctx.FcrCloud.isAdmin=()=>true;route='cuenta';await events.drop(event([excel]));assert.equal(batches.length,1);route='fcr';ctx.FcrCloud.isAdmin=()=>false;await events.drop(event([excel]));assert.equal(batches.length,1);ctx.FcrCloud.isAdmin=()=>true;
 const textDrag=event([],['text/plain']);events.dragover(textDrag);assert(!textDrag.prevented);events.dragenter(event());windowEvents.blur();assert(overlay.hidden);events.dragenter(event());windowEvents.hashchange();assert(overlay.hidden);
 console.log('OK: arrastrar Excel/CSV múltiples, sin navegar al archivo, resaltado, carga única y bloqueo sin sesión o durante otra carga.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

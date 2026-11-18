@@ -9,9 +9,49 @@ Tablero en español para analizar FCR. Funciona en el navegador, procesa Excel y
 3. Pulsá **Cargar Excel o CSV** y elegí una o varias exportaciones de FCR.
 4. Indicá el período si lo conocés, o dejá que se detecte cuando el archivo trae mes y año claros.
 
+También podés arrastrar uno o varios `.xlsx` o `.csv` sobre el tablero y soltarlos cuando aparezca el resaltado. Se usa la biblioteca compartida de Supabase y el período indicado para nuevas cargas. El botón de selección sigue disponible. No se aceptan nuevas cargas durante el procesamiento de otra ni sin sesión autorizada.
+
 En Windows también podés ejecutar `ABRIR.bat` si tenés Python instalado. Esto sirve la carpeta en `http://localhost:8765`, únicamente en tu equipo. Cerrá el servidor con Ctrl+C al terminar.
 
-Cada archivo se guarda en la biblioteca local de IndexedDB. Usá el mismo navegador, perfil y dirección de la página para recuperar los meses anteriores. Conservá los originales: esta biblioteca no se sincroniza entre dispositivos y puede perderse si borrás los datos del navegador.
+Los archivos se guardan exclusivamente en la biblioteca privada de Supabase. Las copias locales de versiones anteriores se conservan en el navegador, pero no se usan ni se suben de forma automática.
+
+## Biblioteca compartida con Supabase
+
+La página abre en **Iniciar sesión** y mantiene el tablero oculto e inactivo hasta validar la cuenta y sus permisos. **Primera vez · Solicitar acceso** permite registrar nombre, correo y contraseña, sin validación por email. La cuenta queda pendiente hasta que Gonzalo la acepte desde **Mi perfil → Solicitudes de acceso**. También puede rechazarla. La persona puede usar **Revisar estado** sin volver a crear su cuenta. Una cuenta pendiente o rechazada no accede al tablero ni a los archivos. La contraseña solo la administra Supabase Auth, no se guarda en la tabla de solicitudes ni se muestra al administrador.
+
+Al entrar, las cargas se guardan en el bucket privado `fcr-files` y su índice mensual en `fcr_imports`. Otros supervisores autorizados pueden abrirlas desde otra computadora. No hay selector ni respaldo automático en una biblioteca local: si Supabase falla, se muestra el error y el archivo no se presenta como guardado. Las copias locales antiguas no se suben automáticamente; para compartirlas, cargá el original. El límite es 50 MB por archivo. **Cerrar sesión** vuelve al ingreso y retira el tablero de la vista.
+
+El guardado conserva los bytes originales y verifica su SHA-256 al descargar. No se sobrescriben objetos. El mismo contenido y período se reutiliza; otro contenido se guarda por separado. Al eliminar en Supabase se retira la copia compartida para todos los supervisores, con confirmación explícita. Si falla la eliminación física después de retirar el índice, se muestra un aviso para que un administrador retire el objeto huérfano.
+
+La configuración pública del cliente está en `supabase-config.js`. Nunca agregar contraseñas PostgreSQL, claves `secret` o `service_role` a ese archivo. La sesión del supervisor se conserva en este navegador; cerrar sesión cierra las ventanas de detalle y retira los datos compartidos de la pantalla. Los cálculos FCR siguen ejecutándose en el navegador.
+
+### Preparación administrativa
+
+En **Mi perfil → Solicitudes de acceso**, Gonzalo puede alternar entre **Pendientes** y **Rechazadas**. Las rechazadas tienen el botón **Aprobar acceso** para cambiar la decisión. La persona podrá pulsar **Revisar estado** o volver a ingresar. Solo el administrador puede hacerlo; la base rechaza cambios desde una lista desactualizada. Para instalaciones existentes, aplicar `supabase/003-review-rejected.sql` después de las migraciones anteriores.
+
+El proyecto necesita `supabase/schema.sql` y después `supabase/002-access-requests.sql`: tablas con RLS, solicitudes de acceso, administradores y bucket privado. La segunda migración reemplaza la antigua habilitación por lista de correos. Ningún registro nuevo obtiene permisos automáticamente por su email o por lo que declare en sus metadatos. Solo un administrador puede aceptar/rechazar mediante una función protegida en la base; un supervisor común no puede aprobarse ni ascender a administrador.
+
+Para otro proyecto: instalar Node.js 22+, ejecutar `npm ci`, configurar `DATABASE_URL` mediante variables de entorno o un `.env` local excluido de Git; después ejecutar `npm run supabase:setup`. La preparación usa TLS con verificación de certificado y nombre del servidor. `PGSSLROOTCERT` permite usar una CA oficial descargada desde Supabase. El `.env` nunca debe publicarse ni copiarse al hosting estático.
+
+Para habilitar al primer administrador, este debe solicitar su cuenta primero. Un operador con acceso a la base debe verificar su identidad y ejecutar el siguiente SQL reemplazando el ejemplo, o ejecutar la preparación con `FCR_ADMIN_EMAIL`. Esta habilitación inicial no se puede realizar desde una cuenta pendiente del navegador. Los demás accesos se aprueban desde Mi perfil.
+
+```sql
+begin;
+insert into public.fcr_supervisors(user_id)
+select id from auth.users
+where lower(trim(email))='administrador@example.com'
+on conflict do nothing;
+insert into public.fcr_access_admins(user_id)
+select id from auth.users where lower(trim(email))='administrador@example.com'
+on conflict do nothing;
+update public.fcr_access_requests set status='approved',reviewed_at=now()
+where user_id in(select id from auth.users where lower(trim(email))='administrador@example.com');
+commit;
+```
+
+En Supabase **Authentication → Sign In / Providers → Email**, desactivar **Confirm email** y guardar. El cliente comprueba ese ajuste antes de solicitar una cuenta: si sigue activo, no llama al registro ni envía un correo. Las cuentas de la versión anterior que hayan quedado sin confirmar deben migrarse explícitamente para permitir login sin email; esto no les otorga permisos de tablero. No se requiere instalar Node.js para usar la página: el SDK oficial está incluido en `vendor/supabase.min.js`; `npm run build:supabase` lo vuelve a generar con la versión fijada en el lockfile.
+
+`npm run supabase:verify` valida RLS en la base mediante usuarios ficticios dentro de una transacción que se revierte; no sube ni consulta archivos reales.
 
 ## Biblioteca de meses y perfiles
 
@@ -87,6 +127,11 @@ node tests/fcr-only.cjs
 node tests/fcr-profile-routes.cjs
 node tests/fcr-comparison.cjs
 node tests/fcr-coach.cjs
+node tests/fcr-cloud.cjs
+node tests/fcr-cloud-auth.cjs
+node tests/fcr-login-view.cjs
+node tests/fcr-account.cjs
+node tests/fcr-drop.cjs
 ```
 
 La prueba utiliza únicamente datos ficticios. No requiere instalar dependencias.

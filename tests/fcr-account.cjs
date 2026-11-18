@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const pending=[{user_id:'nuevo',email:'nuevo@example.invalid',full_name:'<script>nombre</script>',requested_at:'2026-11-01T12:00:00Z'}];let admin=true,decision=null,requestedStatus=null;
+const cloud={user:()=>({id:'jefe',email:'jefe@example.invalid',user_metadata:{full_name:'Administrador'}}),isAdmin:()=>admin,requests:async status=>{requestedStatus=status;return status==='rejected'?[{...pending[0],user_id:'rechazado',email:'rechazado@example.invalid'}]:pending;},review:async(id,value,status)=>{decision={id,value,status};}};
+const ctx=vm.createContext({FcrCloud:cloud,Date,String,currentRoute:()=> 'cuenta',renderRoutes(){}});vm.runInContext(fs.readFileSync('fcr-account.js','utf8'),ctx);const view=vm.runInContext('FcrAccountView',ctx);
+const event=(selector,dataset)=>({target:{closest:q=>q===selector?{dataset}:null}});
+(async()=>{view.render();view.start();await new Promise(resolve=>setTimeout(resolve,0));const html=view.render();assert(html.includes('Solicitudes de acceso'));assert(html.includes('&lt;script&gt;nombre&lt;/script&gt;'));assert(!html.includes('<script>nombre'));
+await view.click(event('[data-access-approve]',{accessApprove:'nuevo'}));assert.equal(decision.value,'approved');assert(!view.render().includes('nuevo@example.invalid'));assert(view.render().includes('Acceso aprobado'));
+view.reset();view.render();view.start();await new Promise(resolve=>setTimeout(resolve,0));await view.click(event('[data-access-reject]',{accessReject:'nuevo'}));assert.equal(decision.value,'rejected');
+await view.click(event('[data-access-status]',{accessStatus:'rejected'}));assert.equal(requestedStatus,'rejected');assert(view.render().includes('rechazado@example.invalid'));assert(view.render().includes('Aprobar acceso'));assert(!view.render().includes('data-access-reject='));await view.click(event('[data-access-approve]',{accessApprove:'rechazado'}));assert.equal(decision.id,'rechazado');assert.equal(decision.value,'approved');assert.equal(decision.status,'rejected');assert(view.render().includes('No hay solicitudes rechazadas'));
+await view.click(event('[data-access-status]',{accessStatus:'pending'}));assert.equal(requestedStatus,'pending');assert(view.render().includes('nuevo@example.invalid'));
+admin=false;view.reset();assert(!view.render().includes('data-access-approve'));assert(view.render().includes('Acceso habilitado'));
+console.log('OK: perfil de cuenta, solicitudes solo para administrador, aceptación, rechazo y texto escapado.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

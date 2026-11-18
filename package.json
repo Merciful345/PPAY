@@ -1,0 +1,17 @@
+{
+  "name": "ppay-fcr",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:supabase": "esbuild scripts/supabase-browser.js --bundle --minify --format=iife --platform=browser --target=es2020 --outfile=vendor/supabase.min.js",
+    "supabase:setup": "node --env-file-if-exists=.env scripts/supabase-setup.cjs",
+    "supabase:verify": "node --env-file-if-exists=.env scripts/supabase-verify.cjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "pg": "8.23.1"
+  }
+}

@@ -9,5 +9,5 @@ const FcrCoachView=(()=>{
  document.getElementById('closeFcrCoach').onclick=()=>document.getElementById('fcrCoachDialog').close();
  document.getElementById('fcrCoachCopy').onclick=async()=>{const status=document.getElementById('fcrCoachCopyStatus'),text=FcrCoach.text(name,period,records,s.window);try{await navigator.clipboard.writeText(text);status.textContent='Resumen copiado. Ya podés pegarlo en el mensaje.';}catch(error){status.textContent='Copiá el siguiente texto:';const field=document.createElement('textarea');field.className='coach-copy-fallback';field.value=text;field.readOnly=true;status.appendChild(field);field.focus();field.select();}};
  }
- return {open};
+ return {open,clear(){snapshot=null;const body=document.getElementById('fcrCoachBody');if(body)body.innerHTML='';}};
 })();

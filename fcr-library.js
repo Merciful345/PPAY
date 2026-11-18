@@ -16,5 +16,7 @@ async function period(id,value){if(!validPeriod(value))throw Error('El período 
 async function updateInfo(id,{summary,sourceMetadata}){const entry=await tx([imports],'readonly',t=>t.objectStore(imports).get(id));if(!entry)throw Error('El archivo ya no está en el historial.');entry.summary=summary;entry.sourceMetadata=sourceMetadata;await tx([imports],'readwrite',t=>t.objectStore(imports).put(entry,id));return metadata(entry);}
 async function remove(id){const current=await selected();await tx([imports,settings],'readwrite',t=>{t.objectStore(imports).delete(id);return current===id?t.objectStore(settings).delete('selected'):t.objectStore(settings).get('selected');});}
 async function migrateLegacy(){const done=await tx([settings],'readonly',t=>t.objectStore(settings).get('legacy-migrated'));if(done)return;const existing=await selected();if(root.CsvStorage?.readFcr){const file=await root.CsvStorage.readFcr();if(file)await save(file);}await tx([settings],'readwrite',t=>{if(existing)t.objectStore(settings).put(existing,'selected');return t.objectStore(settings).put(true,'legacy-migrated');});}
-root.FcrLibrary={list,get,save,selected,profile,setProfile,activate,period,updateInfo,remove,migrateLegacy};
+const local={list,get,save,selected,profile,setProfile,activate,period,updateInfo,remove,migrateLegacy};
+root.FcrLocalLibrary=local;
+root.FcrLibrary=Object.fromEntries(Object.keys(local).map(name=>[name,(...args)=>{if(root.FcrCloud?.requiresLogin&&!root.FcrCloud.isAuthorized())return Promise.reject(Error('Iniciá sesión para acceder al tablero.'));const library=root.FcrCloud?.requiresLogin||root.FcrCloud?.isActive()?root.FcrCloud.adapter():local;return library[name](...args);} ]));
 })(globalThis);

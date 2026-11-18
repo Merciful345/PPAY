@@ -81,4 +81,16 @@ s.view.change({target:{id:'fcrStatus',value:'1'}});
 assert(s.node('routePanel').innerHTML.includes('bi-same'));
 assert(s.node('routePanel').innerHTML.includes('0,00 %'));
 s.view.change({target:{id:'fcrStatus',value:''}});
+// Un cambio de biblioteca invalida una lectura anterior que todavía no terminó.
+const oldId=s.view.state.currentId,libraryGet=s.library.get;
+let finishRead;
+s.library.get=()=>new Promise(resolve=>{finishRead=resolve;});
+const staleRead=s.view.openEntry(oldId);
+assert.equal(typeof finishRead,'function');
+s.library.get=libraryGet;
+await s.view.sourceChanged();
+const restoredId=s.view.state.currentId;
+finishRead(await libraryGet(oct.id));
+await staleRead;
+assert.equal(s.view.state.currentId,restoredId);
 console.log('OK: comparaci\u00f3n general y de perfiles, versiones, datos faltantes; URL propia por usuario, página dedicada, cambio de mes, vuelta al listado, navegación atrás, recarga directa y rutas inválidas.');})().catch(e=>{console.error(e);process.exitCode=1;});

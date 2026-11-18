@@ -1,9 +1,23 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{webcrypto}=require('node:crypto'),XLSX=require('../vendor/xlsx.mini.min.js'),FcrModel=require('../fcr-model.js'),TelepEngine=require('../engine.js'),indexedDB=require('./helpers/indexeddb.cjs')();
 const h=['Representante','Usuario Teco','Suma de ATENDIDAS','CODIGO_LLAMADA','RECONTACTO_7D','RECONTACTO_24H','RECONTACTO_12H'],csv=rows=>[h,...rows].map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\n');const october=new File([csv([['Usuario Uno','001',1,'oct-a',0,0,0],['Usuario Uno','001',1,'oct-b',1,0,0],['Usuario Dos','002',1,'oct-c',0,0,0]])],'2026-10.csv'),november=new File([csv([['Usuario Uno','001',1,'nov-a',1,1,0]])],'2026-11.csv');
-function session(hash='#/fcr'){const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,innerHTML:'',textContent:'',scrollIntoView(){},showModal(){},close(){}});return nodes.get(id);},events={},location={hash},ctx=vm.createContext({$:node,document:{body:{dataset:{}},getElementById:node,querySelectorAll:()=>[]},Intl,Date,Number,String,Array,Uint8Array,Set,Map,Promise,Error,Math,File,TextDecoder,setTimeout,clearTimeout,crypto:webcrypto,indexedDB,XLSX,FcrModel,TelepEngine,location:{...location,protocol:'file:'},history:{replaceState(a,b,value){ctx.location.hash=value;}},window:{addEventListener(type,handler){events[type]=handler;}},selectedAdvisor:null,AdvisorAnalytics:{primary(){throw Error('No debe calcular KPI del CSV en una ruta FCR.');}},CsvStorage:{readFcr:async()=>null}});for(const file of ['config.js','fcr-library.js','fcr-comparison.js','fcr-import.js','routes.js'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);return {ctx,node,events,view:vm.runInContext('FcrImportView',ctx),library:ctx.FcrLibrary};}
+function session(hash='#/fcr'){const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,innerHTML:'',textContent:'',scrollIntoView(){},showModal(){},close(){}});return nodes.get(id);},events={},location={hash},ctx=vm.createContext({$:node,document:{body:{dataset:{}},getElementById:node,querySelectorAll:()=>[]},Intl,Date,Number,String,Array,Uint8Array,Set,Map,Promise,Error,Math,File,TextDecoder,setTimeout,clearTimeout,crypto:webcrypto,indexedDB,XLSX,FcrModel,TelepEngine,location:{...location,protocol:'file:'},history:{replaceState(a,b,value){ctx.location.hash=value;}},window:{addEventListener(type,handler){events[type]=handler;}},selectedAdvisor:null,AdvisorAnalytics:{primary(){throw Error('No debe calcular KPI del CSV en una ruta FCR.');}},CsvStorage:{readFcr:async()=>null}});for(const file of ['config.js','fcr-library.js','fcr-comparison.js','fcr-coach.js','fcr-coach-view.js','fcr-import.js','routes.js'])vm.runInContext(fs.readFileSync(file,'utf8'),ctx);return {ctx,node,events,view:vm.runInContext('FcrImportView',ctx),library:ctx.FcrLibrary};}
 const event=(selector,dataset)=>({target:{closest:s=>s===selector?{dataset}:null}});
 (async()=>{const s=session();await s.view.start();await s.view.importMany([october,november]);const list=await s.library.list(),oct=list.find(e=>e.period==='2026-10'),nov=list.find(e=>e.period==='2026-11');await s.view.openEntry(oct.id);await s.view.click(event('[data-fcr-agent]',{fcrAgent:'teco:001'}));assert.equal(s.ctx.location.hash,'#/fcr/usuario/teco%3A001');assert.equal(vm.runInContext('fcrProfileId()',s.ctx),'teco:001');let html=s.node('routePanel').innerHTML;assert(html.includes('fcr-profile-page'));assert(html.includes('Usuario Uno'));assert(html.includes('50,00 %'));assert.equal((html.match(/PRÓXIMAMENTE/g)||[]).length,2);assert(!html.includes('fcr-import-matrix'));assert(!html.includes('Cargar Excel o CSV'));
+s.ctx.navigator={clipboard:{async writeText(text){s.ctx.copied=text;}}};
+s.view.state.status='1';
+await s.view.click(event('[data-fcr-coach]',{}));
+assert(s.node('fcrCoachBody').innerHTML.includes('50,00 %'));
+assert(s.node('fcrCoachBody').innerHTML.includes('1 de 2 sin recontacto'));
+await s.node('fcrCoachCopy').onclick();
+assert(s.ctx.copied.includes('Usuario Uno'));
+assert(s.ctx.copied.includes('FCR 7 d'));
+assert(s.ctx.copied.includes('50,00 %'));
+s.node('fcrCoachWindow').onchange({target:{value:'24h'}});
+assert(s.node('fcrCoachBody').innerHTML.includes('No se informaron recontactos'));
+await s.node('fcrCoachCopy').onclick();
+assert(s.ctx.copied.includes('Mirada a 24 horas'));
+s.view.state.status='';
 const profileDetails=s.node('fcrProfileDetails');profileDetails.dataset={profile:'teco:001'};profileDetails.open=true;
 s.view.change({target:{id:'fcrStatus',value:'recontact'}});
 assert.match(s.node('routePanel').innerHTML,/<details id="fcrProfileDetails"[^>]* open>/);
@@ -42,6 +56,15 @@ assert(dashboard.indexOf('executive-kpis')<dashboard.indexOf('fcr-month-comparis
 assert(dashboard.indexOf('fcr-month-comparison')<dashboard.indexOf('fcr-import-matrix'));
 assert(dashboard.includes('bi-down'));
 assert.equal((dashboard.match(/id="fcrQuery"/g)||[]).length,1);
+assert(dashboard.includes('Copiar resultados de todos'));
+await s.view.click(event('[data-fcr-team-copy]',{}));
+assert(s.ctx.copied.includes('Usuario Uno (001)'));
+assert(s.ctx.copied.includes('Empeor\u00f3'));
+s.view.change({target:{id:'fcrTeamWindow',value:'12h'}});
+await s.view.click(event('[data-fcr-team-copy]',{}));
+assert(s.ctx.copied.includes('12 horas'));
+assert(s.ctx.copied.includes('Sin cambios visibles'));
+s.view.change({target:{id:'fcrTeamWindow',value:'7d'}});
 assert(dashboard.includes('list="fcrSearchOptions"'));
 assert(dashboard.includes('<option value="001" label="Usuario Uno">'));
 s.view.input({target:{id:'fcrQuery',value:'001'}});

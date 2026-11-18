@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict'),C=require('../fcr-coach.js');
+const row=(flags,tabs,extra={})=>({flags:{'7d':flags[0],'24h':flags[1],'12h':flags[2]},tabs,tabulation:{status:'match'},...extra});
+const records=[row([1,0,0],['Cuenta','Clave']),row([1,1,0],[' cuenta ','Clave']),row([0,0,0],['Cuenta','Clave']),row([1,1,1],['Tarjeta','Clave']),row([1,0,0],[]),row([null,null,null],['Omitido'])];
+const s=C.build(records);assert.equal(s.valid,5);assert.equal(s.invalid,1);assert.equal(s.recontacts,4);assert.equal(s.percent,20);assert.equal(s.ranking[0].recontacts,2);assert.equal(s.ranking[0].total,3);assert.equal(s.ranking[0].share,50);assert.equal(s.ranking.length,3);assert(s.ranking.some(g=>g.label==='Sin tabulación informada'));
+assert.equal(C.build(records,'24h').recontacts,2);assert.equal(C.build(records,'12h').recontacts,1);assert.equal(C.build([]).percent,null);assert.equal(C.build([row([0,0,0],[])]).ranking.length,0);
+const t=C.text('Asesor de prueba','2026-11',records);assert(t.includes('20,00 %'));assert(t.includes('FCR 24 horas: 60,00 %'));assert(t.includes('Tabulaciones de la atención original'));assert(t.includes('1 registro sin indicador válido'));assert(t.includes('no demuestran la causa'));assert(!C.text('Sin datos','2026-11',[]).includes('0,00 %'));
+console.log('OK: resumen asesor, ventanas independientes, motivos originales, agrupación, tasas y copia sin filtros.');
+const agent=(id,name,flags)=>({...row(flags,['Motivo privado']),agent:id,representative:name,user:id});
+const current=[agent('a','Ana',[0,0,0]),agent('b','Beto',[1,0,0]),agent('c','Caro',[0,0,0]),agent('d','Dani',[0,0,0]),agent('e','Ema',[null,null,null])],previous=[agent('a','Ana',[1,0,0]),agent('b','Beto',[0,0,0]),agent('c','Caro',[0,0,0])];
+const team=C.teamText(current,previous,'noviembre 2026','octubre 2026');
+assert(team.includes('Ana (a) — 100,00 % · 🟢 Mejoró'));assert(team.includes('Beto (b) — 0,00 % · 🔴 Empeoró'));assert(team.includes('Caro (c) — 100,00 % · ⚪ Sin cambios visibles'));assert(team.includes('Dani (d) — 100,00 % · Sin comparación'));assert(team.includes('Ema (e) — Sin datos · Sin comparación'));assert(!team.includes('Motivo privado'));assert(!team.includes('p.p.'));assert(!C.teamText(current,null,'noviembre 2026','octubre 2026').includes('Mejoró'));
+assert.equal((C.teamText(Array.from({length:25},(_,i)=>agent(String(i),'Asesor '+i,[0,0,0])),[],'Actual','Anterior').match(/• /g)||[]).length,25);
+console.log('OK: copia de todo el equipo, estados mensuales, ausencias y salida compacta sin límite de página.');

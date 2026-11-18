@@ -61,6 +61,10 @@ La guía de uso ampliada está en `LEEME.txt`.
 
 ## Validación sin datos reales
 
+Desde cada perfil, **Mostrar al asesor** abre una vista simple con sus tres FCR y las tabulaciones originales que concentran más registros con recontacto. Se puede elegir 7 días, 24 horas o 12 horas. El ranking cuenta registros con indicador 1 por motivo completo; informa también el total de atenciones evaluables del motivo y su proporción de recontactos. Usa todo el archivo del usuario, sin filtros del detalle, y conserva una instantánea mientras la ventana está abierta. Las coincidencias de tabulación se muestran aparte y no alteran el FCR.
+
+**Copiar resumen para compartir** copia un mensaje con el período, los tres FCR y los cinco motivos principales del plazo elegido. Si el navegador no permite acceder al portapapeles, aparece el texto para copiar manualmente. No se envían mensajes automáticamente.
+
 ### Comparación mensual de FCR
 
 El resumen FCR y cada perfil comparan el archivo seleccionado con el mes calendario inmediatamente anterior. Cargá ambos archivos y asignales su período en la biblioteca. Por ejemplo, al abrir noviembre se compara con octubre, aunque hoy sea otro mes.
@@ -82,6 +86,7 @@ node tests/fcr-history-view.cjs
 node tests/fcr-only.cjs
 node tests/fcr-profile-routes.cjs
 node tests/fcr-comparison.cjs
+node tests/fcr-coach.cjs
 ```
 
 La prueba utiliza únicamente datos ficticios. No requiere instalar dependencias.

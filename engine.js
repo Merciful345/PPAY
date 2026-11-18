@@ -1,8 +1,8 @@
 (function(root){
 'use strict';
 const required=['Tipo de medios','Usuarios - Con interacciones','Remoto','Fecha','Fecha de finalización','Duración','Dirección inicial','ID de conversación','División','Conversación total','Manejo total','Primera cola','Última conclusión','Respuesta de agente media','Total de cola','Total de ACW'];
-function parseCSV(text){
- const first=text.slice(0,text.search(/[\r\n]/)); const sep=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';
+function parseCSV(text,delimiter){
+ const first=text.slice(0,text.search(/[\r\n]/)); const sep=delimiter||((first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',');
  const rows=[];let row=[],v='',q=false,sourceStart=0;
  for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(q&&text[i+1]==='"'){v+='"';i++;}else if(q||v==='')q=!q;else v+=c;}else if(!q&&c===sep){row.push(v);v='';}else if(!q&&(c==='\n'||c==='\r')){if(c==='\r'&&text[i+1]==='\n')i++;row.push(v);if(row.some(x=>x!=='')){Object.defineProperties(row,{sourceStart:{value:sourceStart},sourceEnd:{value:i+1}});rows.push(row);}sourceStart=i+1;row=[];v='';}else v+=c;}
  if(q)throw Error('CSV inválido: hay un campo entre comillas sin cerrar.');if(v||row.length){row.push(v);Object.defineProperties(row,{sourceStart:{value:sourceStart},sourceEnd:{value:text.length}});rows.push(row);}return rows;

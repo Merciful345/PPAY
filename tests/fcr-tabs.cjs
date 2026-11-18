@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),M=require('../fcr-model.js');
+const compare=(tabs,recontactTabs,flags={'7d':1,'24h':0,'12h':0},extra={})=>M.compareTabulations({tabs,recontactTabs,flags,...extra});
+const full=['PAGOS','DEVOLUCIÓN','ASESORAMIENTO','RESUELTO'];
+assert.equal(compare(full,full).status,'match');assert.equal(compare(full,full).matchedLevels,4);
+assert.equal(compare(full,['  pagos ','devolucio\u0301n','asesoramiento','resuelto ']).status,'match');
+assert.equal(compare(['PAGOS','  MOTIVO   UNO ','',''],['pagos','motivo uno','','']).status,'match');assert.equal(compare(['PAGOS','MOTIVO','',''],['PAGOS','MOTIVO','','']).matchedLevels,2);
+assert.equal(compare(['','','',''],['','','','']).status,'not_evaluable');assert.equal(compare(full,['PAGOS','DEVOLUCIÓN','','RESUELTO']).status,'not_evaluable');assert.deepEqual(compare(full,['PAGOS','OTRO','ASESORAMIENTO','RESUELTO']).differentLevels,[2]);
+assert.equal(compare(full,full,{'7d':0,'24h':0,'12h':0}).status,'no_recontact');assert.equal(compare(full,full,{'7d':null,'24h':null,'12h':null}).status,'not_evaluable');assert.equal(compare(full,full,{'7d':null,'24h':1,'12h':0}).status,'match');assert.equal(compare(full,full,{'7d':1},{tabulationConflict:true}).status,'not_evaluable');
+const h=['Representante','Usuario Teco','Suma de ATENDIDAS','CODIGO_LLAMADA','RECONTACTO_7D','RECONTACTO_24H','RECONTACTO_12H',...['TAB1','TAB2','TAB3','TAB4'],...['TAB1_RECONTACTO','TAB2_RECONTACTO','TAB3_RECONTACTO','TAB4_RECONTACTO']],row=['Asesor ficticio','001',1,'ficticio',1,0,0,...full,...full],d=M.fromRows([h,row]);assert.equal(d.records[0].tabulation.status,'match');assert.equal(M.filter(d.records,{tabulation:'match'}).length,1);assert.equal(M.filter(d.records,{tabulation:'different'}).length,0);assert.equal(M.summary(d.records).windows['7d'].percent,0);assert.equal(M.summary(d.records).windows['24h'].percent,100);
+const changed=[...row];changed[11]='OTRO';const conflict=M.fromRows([h,row,changed]);assert.equal(conflict.records.length,1);assert.equal(conflict.records[0].tabulation.status,'not_evaluable');assert.equal(M.summary(conflict.records).windows['7d'].recontacts,1);
+const reversed=[...h].reverse(),reordered=M.fromRows([reversed,reversed.map(k=>row[h.indexOf(k)])]);assert.equal(reordered.records[0].tabulation.status,'match');assert.deepEqual(d.records[0].tabs,full);assert.equal(d.records[0].sourceValues[8],'DEVOLUCIÓN');
+console.log('OK: tabulaciones iguales, distintas, vacías, incompletas, normalización, indicadores, duplicados, filtros y FCR sin alteraciones.');

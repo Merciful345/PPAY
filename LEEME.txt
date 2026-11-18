@@ -1,3 +1,26 @@
+BIBLIOTECA DE MESES Y PERFILES
+La pantalla actual muestra solo FCR. Cargar Excel o CSV permite seleccionar
+varios archivos. Cada archivo queda separado en el historial local, con
+periodo editable. Elegi un mes y un archivo guardado para volver a verlo.
+El periodo se detecta solo si hay mes y anio claros; si no, indicalo.
+Ver perfil muestra FCR 7 dias, 24 horas y 12 horas del usuario y el archivo
+seleccionado. TMO y CxH muestran PROXIMAMENTE, sin valores antiguos.
+La biblioteca y el ultimo perfil se recuperan al recargar en el mismo
+navegador, perfil y direccion. No se sincronizan entre dispositivos.
+Conserva los archivos originales o descargalos desde cada fila del historial.
+Eliminar guardado afecta solo esa copia local, nunca el archivo original.
+
+ACTUALIZACION DE FCR DESDE EXCEL
+La ruta FCR carga un XLSX propio; 0 = sin recontacto y 1 = con recontacto.
+Se calculan 7 dias, 24 horas y 12 horas desde sus indicadores del Excel.
+Aviso de tabulacion: TAB1 a TAB4 se comparan con TAB1_RECONTACTO a TAB4_RECONTACTO.
+Si hay recontacto y coinciden los niveles informados, se muestra un aviso.
+Los vacios en ambos lados no se cuentan como coincidencia; si falta un dato
+de un solo lado queda No evaluable. Si hay datos distintos, se indica.
+El detalle permite revisar cada nivel y el filtro Tabulaciones muestra
+las coincidencias. El aviso no modifica el FCR ni los archivos originales.
+Esta fuente reemplaza el calculo anterior desde CSV en la ruta FCR.
+
 ACTUALIZACION DEL TMO 17/11/2026
 TMO = (suma Total de ACW + suma Manejo total) / atendidas, en segundos.
 Atendidas: casos distintos con participación y ambos tiempos válidos.
